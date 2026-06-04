@@ -425,9 +425,15 @@ void InitNativeAllocatorDispatch(libc_globals* globals) {
 
   if (!use_jemalloc) {
     globals->malloc_dispatch_table = __scudo_malloc_dispatch;
-    atomic_store_explicit(&globals->current_dispatch_table, &globals->malloc_dispatch_table,
+    // Route the live dispatch through the immutable scudo table, not the mutable
+    // globals->malloc_dispatch_table. malloc_debug / malloc_hooks fill that buffer
+    // in place and only flip current_dispatch_table to it after their init hook
+    // runs (FinishInstallHooks); aliasing it here makes free() reach debug_free
+    // before debug_initialize() sets g_debug, faulting on a null deref. GWP-ASan
+    // points current_dispatch_table at its own static table for the same reason.
+    atomic_store_explicit(&globals->current_dispatch_table, &__scudo_malloc_dispatch,
                           memory_order_release);
-    atomic_store_explicit(&globals->default_dispatch_table, &globals->malloc_dispatch_table,
+    atomic_store_explicit(&globals->default_dispatch_table, &__scudo_malloc_dispatch,
                           memory_order_release);
     native_allocator_dispatch = &__scudo_malloc_dispatch;
   }
