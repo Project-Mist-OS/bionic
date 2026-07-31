@@ -71,7 +71,7 @@ static const char* const kMountFilterKeywords[] = {
 };
 
 static const char* const kAllowlistedPackages[] = {
-    "org.lineageos.updater",
+    "org.lineageos.updater", "com.mist.updater",
     nullptr
 };
 
